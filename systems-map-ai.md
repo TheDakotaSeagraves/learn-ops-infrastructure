@@ -3,39 +3,42 @@
 ## 1. System Diagram
 
 ```
-                             +----------+
-                             |          |
-                             | Browser  |
-                             |          |
-                             +-----+----+
-      HTTP :3000 (React)           |        HTTP :3001 (Grafana)
-             +─────────────────────+───────────────────────────────────────────+
-             |                                                                  |
-             v                                                                  v
-      +----------+                                                       +----------+
-      |  client  |                                                       |  grafana |
-      |  (React) |                                                       | (Grafana)|
-      +-----+----+                                                       +-----+----+
-            |                                                                  |
-            | HTTP REST :8000 (Django)                      PromQL HTTP :9090  |
-            |                                                                  v
-            v                                                       +──────────────+   HTTP scrape :9187   +──────────────────+
-      +──────────+ <─── HTTP scrape :8000 (Django metrics) ─────── | prometheus   |──────────────────────>| postgres_exporter|
-      |   api    |                                                  |              |                        |                  |
-      | (Django) |                                                  +──────────────+                        +────────┬─────────+
-      +──+────+──+                                                                                                   |
-         |    |                                                                                          PostgreSQL   |
-         |    | RESP :6379 (Valkey)                                                                     :5432        |
-         |    |                                                                                          (PG 16)     |
-         |    v                                                                                                       |
-         |  +──────────+ <─── RESP :6379 (valkey-cli) ─── +──────────────+                                           |
-         |  |  valkey  |                                   │valkey-monitor│                                           |
-         |  | (Valkey) |                                   │ (valkey-cli) │                                           |
-         |  +──────────+                                   +──────────────+                                           |
-         |                                                                                                             |
-         │ PostgreSQL :5432 (PG 16)                                                                                   |
-         v                                                                                                             v
-      +──────────────────────────────────────────────────────────────────────────────────────────────────────────────────+
-      |                                               database (PG 16)                                                    |
-      +──────────────────────────────────────────────────────────────────────────────────────────────────────────────────+
++─────────────────+   +──────────────+                                    +──────────────+
+│   Developer IDE │   │   Browser    │────── HTTP :3001 (Grafana) ───────►│   grafana    │
++─────────────────+   +──────────────+                                    │   (Grafana)  │
+         │                   │                                            +──────┬───────+
+    debugpy :5678        HTTP :3000                               PromQL HTTP    │ :9090
+         │               (React) │                                               │
+         │                       v                                               v
+         │               +──────────────+   HTTP REST :8000 (Django)   +──────────────────+   HTTP GET /metrics :9187   +──────────────────+
+         └──────────────►│    client    │──────────────────────────────►│      api         │◄──/metrics/metrics :8000───│   prometheus     │────/metrics :9187────────►│postgres_exporter │
+                         │    (React)   │                               │    (Django)      │                            │                  │                           │                  │
+                         +──────────────+                               +────────┬─────┬───+                            +──────────────────+                           +────────┬─────────+
+                                                                        PG :5432 │     │ RESP :6379 (Valkey)                                                           PG :5432 │ (PG 16)
+                                                                        (PG 16)  │     │                                                                                         │
+                                                                                 │     v                                                                                          │
+                                                                                 │   +──────────+◄── RESP :6379 MONITOR ──+──────────────────+                                   │
+                                                                                 │   │  valkey  │                         │  valkey-monitor  │                                   │
+                                                                                 │   │ (Valkey) │                         │  (valkey-cli)    │                                   │
+                                                                                 │   +──────────+                         +──────────────────+                                   │
+                                                                                 │                                                                                                │
+                                                                                 v                                                                                                v
+                                                                        +─────────────────────────────────────────────────────────────────────────────────────────────────────────────+
+                                                                        │                                       database (PostgreSQL 16)                                               │
+                                                                        +─────────────────────────────────────────────────────────────────────────────────────────────────────────────+
+```
+
+```mermaid
+graph LR
+    Developer_IDE -->|debugpy :5678| api
+    Browser -->|HTTP :3000 React| client
+    Browser -->|HTTP :3001 Grafana| grafana
+    client -->|HTTP REST :8000 Django| api
+    grafana -->|PromQL HTTP :9090| prometheus
+    prometheus -->|HTTP GET /metrics/metrics :8000| api
+    prometheus -->|HTTP GET /metrics :9187| postgres_exporter
+    api -->|RESP :6379 Valkey| valkey
+    valkey_monitor -->|RESP :6379 MONITOR| valkey
+    api -->|PostgreSQL :5432| database
+    postgres_exporter -->|PostgreSQL :5432| database
 ```
