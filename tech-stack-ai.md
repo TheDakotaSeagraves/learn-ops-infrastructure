@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Tech Stack (AI)
 
 ## 1. Run Questions
@@ -76,3 +77,6 @@ Run targets from the repo root with `make <target>`.
 | | | |
 
 ## 3. System Overview
+=======
+AI overview
+>>>>>>> upstream/main
